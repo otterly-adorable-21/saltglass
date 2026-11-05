@@ -753,3 +753,8 @@ body.modal-open{overflow:hidden}
 .game-frame iframe{position:absolute;left:0;top:0;border:0;overflow:hidden;transform-origin:0 0}
 .game-frame:fullscreen{margin:0;border:0;border-radius:0}
 #gameWrap .panel{padding:16px}
+
+/* bots cover */
+.bots-cover{margin:18px auto 6px;border:1px solid rgba(212,175,106,.6);border-radius:14px;overflow:hidden;box-shadow:0 0 26px rgba(212,175,106,.18);line-height:0}
+.bots-cover img{width:100%;height:auto;display:block}
+@media (max-width:700px){.bots-cover img{aspect-ratio:16/9;object-fit:cover;object-position:50% 40%}}
