@@ -11,8 +11,11 @@ window.SITE_CONFIG = {
 
   // 2. The share link of your Google Form (the one creators fill in to add a bot).
   //    Leave empty to hide the "Submit your bot" button.
-  FORM_URL: 'https://docs.google.com/forms/d/e/1FAIpQLSdu6_v_82X750SLW2Fi4NfpecrWwphcHVlrzc91-cVHtdRlBg/viewform?usp=header',
+  FORM_URL: 'https://docs.google.com/forms/d/e/1FAIpQLSdu6_v_82X750SLW2Fi4NfpecrWwphcHVlrzc91-cVHtdRlBg/viewform',
 
   // 3. Your Discord invite, shown in the footer.
-  DISCORD_URL: 'http://discord.gg/velvethaven'
+  DISCORD_URL: 'http://discord.gg/velvethaven',
+
+  // 4. The Count the Lamps game, embedded on the Rite page. Leave empty to hide it.
+  GAME_URL: 'https://light-the-lamps.ai.studio/'
 };
