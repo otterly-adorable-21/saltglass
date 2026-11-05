@@ -19,7 +19,7 @@
         { to: 'beasts', t: 'The Beasts', s: 'Whale lines, working animals and the creatures of the deep.', art: seaArt },
         { to: 'voyage', t: 'The Voyage', s: 'Whales carry you. Days, never months.', art: mapArt },
         { to: 'rite', t: 'The Rite', s: 'Once a year, every lamp goes dark.', art: lamps },
-        { to: 'bots', t: 'The Bots', s: 'Meet the people of Saltglass.', art: bArt('pisces') }
+        { to: 'bots', t: 'The Bots', s: 'Meet the people of Saltglass.', art: '<img src="img/bots-cover.webp" alt="The Admiral, Volaro and Shaedira before Saltglass City">', cls: 'wide-art' }
       ];
       const sw = [
         { k: 'whale', y: 8, d: 70, dl: -10, s: 1.5, n: 'A Songline whale' },
@@ -36,7 +36,7 @@
           <div class="genre"><span>Romance</span><i>◆</i><span>Drama</span><i>◆</i><span>Angst</span></div>
         </div>
         <div class="sea-band" aria-hidden="false">${sw.map((w, i) => `<button class="swimmer ${w.rev ? 'rev' : ''}" style="--y:${w.y}%;--d:${w.d}s;--dl:${w.dl}s;--s:${w.s}" data-n="${esc(w.n)}" data-k="${w.k}" aria-label="${esc(w.n)}"><span class="flip" style="${w.rot ? 'transform:rotate(90deg)' : ''}">${SG.animal(w.k)}</span></button>`).join('')}</div>
-        <div class="wrap"><div class="portals">${P.map(p => `<a class="portal" href="#${p.to}"><div class="pa">${p.art}</div><div class="pt"><b>${p.t}</b><span>${p.s}</span></div></a>`).join('')}</div>
+        <div class="wrap"><div class="portals">${P.map(p => `<a class="portal" href="#${p.to}"><div class="pa ${p.cls || ''}">${p.art}</div><div class="pt"><b>${p.t}</b><span>${p.s}</span></div></a>`).join('')}</div>
         <p class="hint">Click the sky to catch a falling star. Click a whale to meet it.</p></div>`;
       $$('#v-home .swimmer').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); SG.sound.whale(); SG.toast(b.dataset.n + ' passes beneath the lamps.'); }));
     }
