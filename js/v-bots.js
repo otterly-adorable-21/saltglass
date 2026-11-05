@@ -76,7 +76,7 @@
   SG.views.bots = {
     init() {
       const F = B.F, formBtn = CFG.FORM_URL ? `<a class="btn on" href="${esc(CFG.FORM_URL)}" target="_blank" rel="noopener">Submit your bot</a>` : '';
-      $('#v-bots').innerHTML = `<div class="wrap"><div class="bots-cover"><img src="img/bots-cover.webp" alt="Saltglass: the Admiral, Volaro and Shaedira before the glass-domed city under a starfall sky" width="1600" height="800"></div><h2>The Bots</h2><img class="rule" src="img/divider.webp" alt="">
+      $('#v-bots').innerHTML = `<div class="wrap"><h2>The Bots</h2><img class="rule" src="img/divider.webp" alt="">
         <p class="lede">Everyone who lives in Saltglass, with links to where you can meet them. Filter by where they live and where they sit in the story.</p>
         <div class="row center">${formBtn}<a class="btn" href="#myth">New here? Start with the myth</a></div>
         <div class="notice" id="botNote" hidden></div>
