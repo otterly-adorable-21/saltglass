@@ -79,30 +79,11 @@
             <ellipse cx="60" cy="300" rx="52" ry="18" fill="url(#shG)" class="tglow"/><text x="60" y="316" text-anchor="middle" class="sh-t">THE STAR</text><text x="60" y="22" text-anchor="middle" class="sh-t">THE QUAY</text>
             <g id="adm" transform="translate(60 30)"><circle r="12" fill="url(#shG)"/><circle r="3.4" fill="#fff4d6"/></g></svg></div></div>
           <div class="whispers" id="whispers" aria-hidden="true"></div></div></div>
-        <div class="wrap" id="gameWrap" hidden><div class="panel" style="margin-top:22px"><h3>Play: Count the Lamps</h3><p class="small">Dim the lamps, count in cadence, and hold the silence where the thirteenth would be. Best with sound on.</p>
-          <div class="game-frame"><iframe id="gameFrame" scrolling="no" title="Count the Lamps, a Night of Quiet Lights game" loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe></div>
-          <p class="small" style="margin:10px 0 0"><button class="btn small-btn" id="gameFs" type="button">Full screen</button> <a id="gameLink" target="_blank" rel="noopener">Not loading? Open the game in its own tab.</a></p></div></div>
         <div class="wrap"><div class="panel" style="margin-top:22px"><h3>Count the Lamps</h3><p class="small">The skipping and clapping rhyme children sing. Whoever says a number past twelve, or draws breath to, pays the tea and sits out a round.</p>
           <div class="lampring" id="lampRing" aria-hidden="true"></div><p class="rhyme-line" id="rhymeLine" aria-live="polite"></p>
           <div class="row"><button class="btn on" id="countBtn">Say the next number</button><button class="btn" id="hushBtn" hidden>Stay silent</button><button class="btn" id="resetCount" hidden>Start again</button></div>
           <p class="small" style="margin-top:12px">In the Undertow and the Drowned Reaches, darker variants do not stop at twelve.</p></div></div>`;
-      const gu = (window.SITE_CONFIG || {}).GAME_URL;
-      if (gu) {
-        $('#gameWrap').hidden = false; $('#gameLink').href = gu;
-        const fr = $('.game-frame'), ifr = $('#gameFrame');
-        const fit = () => {
-          const fs = document.fullscreenElement === fr, w = fr.parentElement.clientWidth || 600, narrow = innerWidth < 700;
-          const VW = narrow ? 420 : 1000, VH = narrow ? 820 : 760;
-          const availW = fs ? innerWidth : w, availH = fs ? innerHeight : Math.max(320, innerHeight - 260);
-          const sc = Math.min(availW / VW, availH / VH, 1);
-          ifr.style.width = VW + 'px'; ifr.style.height = VH + 'px'; ifr.style.transform = 'scale(' + sc + ')';
-          fr.style.width = fs ? '100%' : Math.round(VW * sc) + 'px'; fr.style.height = fs ? '100%' : Math.round(VH * sc) + 'px';
-        };
-        ifr.src = gu; fit(); addEventListener('resize', fit); document.addEventListener('fullscreenchange', fit);
-        $('#gameFs').addEventListener('click', () => { try { (fr.requestFullscreen || fr.webkitRequestFullscreen).call(fr); } catch (e) { window.open(gu, '_blank', 'noopener'); } });
-        this.fitGame = fit;
-      }
-      const box = $('#lamps'); this.rows = [];
+            const box = $('#lamps'); this.rows = [];
       L.lampRows.forEach((name, r) => { const row = document.createElement('div'); row.className = 'lrow' + (r === 5 ? ' lw' : ''); row.innerHTML = `<span class="ln">${esc(name)}</span><span class="ld"></span>`; const ld = $('.ld', row), ls = []; for (let k = 0; k < (r === 5 ? 8 : 18); k++) { const l = document.createElement('i'); l.className = 'lamp'; ld.appendChild(l); ls.push(l); } box.appendChild(row); this.rows.push(ls); });
       SG.mkTabs($('#nightTrack'), L.night.map((s, i) => ({ id: String(i), label: s.time })), id => this.set(+id));
       $$('#dawnBox button').forEach(b => b.addEventListener('click', () => { this.ret = b.dataset.ret; this.set(this.stage, true); }));
@@ -131,6 +112,6 @@
       if (!keep) { if (i === 4) { for (let k = 0; k < 12; k++) setTimeout(() => { if (this.stage === 4) SG.sound.bell(); }, k * 900); } else if (i === 6) SG.sound.whale(); else if (s.dawn && yes) SG.sound.chime(2); else SG.sound.chime(i); }
     },
     leave() { SG.dim = 0; document.body.style.setProperty('--dim', 0); },
-    enter() { if (this.rows) this.set(this.stage, true); if (this.fitGame) setTimeout(this.fitGame, 50); }
+    enter() { if (this.rows) this.set(this.stage, true); }
   };
 })(window.SG);
