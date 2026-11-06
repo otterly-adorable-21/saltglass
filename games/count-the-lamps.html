@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Count the Lamps: a Saltglass rhythm game</title>
+<meta name="description" content="Dim the lamps, count in cadence, and hold the silence where the thirteenth would be.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="game.css?v=1">
+<style>
+.frame{position:relative;margin:0 auto;border:1px solid rgba(212,175,106,.5);border-radius:12px;overflow:hidden;background:#050a1f}
+.frame iframe{position:absolute;left:0;top:0;border:0;overflow:hidden;transform-origin:0 0}
+.frame:fullscreen{border:0;border-radius:0;margin:0}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="top"><a href="../index.html#play">&larr; Back to Saltglass</a><span></span></div>
+<div class="wrap">
+  <h1>Count the Lamps</h1>
+  <p class="sub">Dim the lamps, count in cadence, and hold the silence where the thirteenth would be. Best with sound on.</p>
+  <div class="panel" style="padding:12px">
+    <div class="frame" id="fr"><iframe id="gf" title="Count the Lamps, a Night of Quiet Lights game" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe></div>
+    <div class="row" style="margin-top:10px;justify-content:center"><button class="btn sm" id="fs" type="button">Full screen</button><a class="btn sm" id="tab" target="_blank" rel="noopener" style="text-decoration:none">Open in its own tab</a></div>
+  </div>
+</div>
+<script src="../config.js"></script>
+<script src="common.js?v=1"></script>
+<script>
+(function () {
+  const URL_ = (window.SITE_CONFIG || {}).GAME_URL || 'https://light-the-lamps.ai.studio/';
+  const fr = document.getElementById('fr'), gf = document.getElementById('gf');
+  document.getElementById('tab').href = URL_; gf.src = URL_;
+  /* The game renders at a roomy virtual size and is scaled down to fit, so it never needs its own scrollbar. */
+  function fit() {
+    const fs = document.fullscreenElement === fr, narrow = innerWidth < 700;
+    const VW = narrow ? 420 : 1000, VH = narrow ? 820 : 760;
+    const availW = fs ? innerWidth : Math.min(940, fr.parentElement.clientWidth - 24), availH = fs ? innerHeight : Math.max(320, innerHeight - 300);
+    const sc = Math.min(availW / VW, availH / VH, 1);
+    gf.style.width = VW + 'px'; gf.style.height = VH + 'px'; gf.style.transform = 'scale(' + sc + ')';
+    fr.style.width = fs ? '100%' : Math.round(VW * sc) + 'px'; fr.style.height = fs ? '100%' : Math.round(VH * sc) + 'px';
+  }
+  fit(); addEventListener('resize', fit); document.addEventListener('fullscreenchange', fit);
+  document.getElementById('fs').onclick = () => { try { (fr.requestFullscreen || fr.webkitRequestFullscreen).call(fr); } catch (e) { window.open(URL_, '_blank', 'noopener'); } };
+})();
+</script>
+</body>
+</html>
