@@ -748,11 +748,11 @@ body.modal-open{overflow:hidden}
 .mp-fx input{width:18px;height:18px;accent-color:#d4af6a}
 @media (max-width:480px){.mbtn{bottom:14px;width:44px;height:44px}#audio-btn{left:12px}#playlist-btn{left:64px}}
 
-/* embedded game: the game renders at a virtual size, then is scaled down to fit */
-.game-frame{position:relative;width:100%;margin:12px auto 0;border:1px solid rgba(212,175,106,.5);border-radius:12px;overflow:hidden;background:#050a1f}
-.game-frame iframe{position:absolute;left:0;top:0;border:0;overflow:hidden;transform-origin:0 0}
-.game-frame:fullscreen{margin:0;border:0;border-radius:0}
-#gameWrap .panel{padding:16px}
 
 /* home portal cover: fills the card like the others, framed on the three characters */
 .pa.wide-art img{object-position:50% 35%}
+
+/* play cards */
+.playcard{display:block;text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s}
+.playcard:hover{transform:translateY(-3px);box-shadow:0 0 30px rgba(212,175,106,.3)}
+.playcard h3{margin-bottom:6px}
