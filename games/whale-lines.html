@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Whale Lines: a Saltglass voyage game</title>
+<meta name="description" content="Run a whale line across the regions of Saltglass before the Night of Quiet Lights. Trade, carry pilgrims, and decide what to do about dust.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="game.css?v=1">
+<style>
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+#map{width:100%;height:auto;display:block}
+#map .lane{stroke:rgba(127,200,232,.35);stroke-width:1.4;stroke-dasharray:3 7}
+#map .lane.on{stroke:var(--sea);stroke-width:2.2}
+#map .lab{font-family:var(--display);font-size:11px;letter-spacing:.06em;fill:var(--sea);text-anchor:middle;paint-order:stroke;stroke:#0b1430;stroke-width:4px}
+#map .node{cursor:pointer}
+#map .node circle{fill:rgba(11,20,48,.9);stroke:var(--gold);stroke-width:2;transition:fill .2s}
+#map .node:hover circle,#map .node:focus-visible circle{fill:rgba(212,175,106,.3)}
+#map .node.here circle{fill:rgba(212,175,106,.55);stroke:var(--gold-lt);stroke-width:3}
+#map .node text{font-family:var(--display);font-size:10px;letter-spacing:.08em;fill:var(--gold-lt);text-anchor:middle;pointer-events:none}
+#map .whale{fill:var(--sea);opacity:.9}
+table{width:100%;border-collapse:collapse;font-size:1.02rem}
+th{font-family:var(--display);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--violet);font-weight:400;text-align:left;padding:4px 4px}
+td{padding:5px 4px;border-top:1px solid rgba(212,175,106,.2);vertical-align:middle}
+td.n{color:var(--gold-lt)}td.r{text-align:right;white-space:nowrap}
+.cb{color:var(--rose);font-size:.8rem;font-family:var(--display);letter-spacing:.1em}
+.log{max-height:160px;overflow:auto;font-size:1rem;color:#c9dcec}
+.log div{padding:3px 0;border-bottom:1px dotted rgba(212,175,106,.2)}
+.log b{color:var(--gold-lt);font-family:var(--display);font-size:.62rem;letter-spacing:.12em;margin-right:6px}
+.opt{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px;margin:14px 0}
+.opt .btn{text-align:left;border-radius:12px;text-transform:none;letter-spacing:.02em;font-family:var(--body);font-size:1.08rem;padding:12px 14px}
+.opt .btn b{display:block;font-family:var(--display);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-lt);font-weight:600}
+.opt .btn small{color:var(--mist);font-size:.95rem}
+.ctr{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0}
+.ctr div{border:1px solid rgba(212,175,106,.35);border-radius:10px;padding:8px 12px;background:rgba(11,20,48,.55)}
+.ctr b{display:block;font-family:var(--display);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);font-weight:400}
+.contract{border:1px solid rgba(127,200,232,.4);border-radius:10px;padding:8px 12px;margin-top:8px;background:rgba(11,20,48,.5);font-size:1.02rem}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="top"><a href="../index.html#play">&larr; Back to Saltglass</a><button class="btn sm" id="snd" type="button">Sound: on</button></div>
+<div class="wrap" id="app"></div>
+<script src="common.js?v=1"></script>
+<script>
+(function () {
+  const { $, $$, esc, rnd, pick, clamp, tone, bell, save, load } = G; G.mute($('#snd'));
+  const END_DAY = 30;
+
+  const TOWNS = {
+    S: { name: 'Saltglass', x: 300, y: 150, note: 'The capital. Pays well for everything, and patrols hard.', patrol: .25 },
+    C: { name: 'Cinderbrine', x: 130, y: 90, note: 'Black sand and forges. Glass-steel is cheap here.', patrol: .18 },
+    A: { name: 'Ashgrove', x: 140, y: 270, note: 'Salt flats and syndicates. No patrols to speak of.', patrol: 0 },
+    D: { name: 'Verdant Drift', x: 470, y: 90, note: 'Jungle isles. Fruit is cheap, and pilgrims never stop coming.', patrol: 0 },
+    F: { name: 'Frostmere Reach', x: 480, y: 270, note: 'Ice and aurora. Whale-oil is cheap, and everything else is dear.', patrol: 0 }
+  };
+  const DIST = { SC: 3, SA: 4, SD: 5, SF: 7, CA: 5, CD: 6, CF: 8, AD: 6, AF: 9, DF: 6 };
+  const dist = (a, b) => DIST[a + b] || DIST[b + a];
+  const GOODS = [
+    { id: 'glass', name: 'Glass-steel', base: 40, m: { S: 1.6, C: .6, A: 1.3, D: 1.4, F: 1.3 } },
+    { id: 'fruit', name: 'Drift fruit', base: 18, m: { S: 1.5, C: 1.2, A: 1.3, D: .5, F: 1.7 } },
+    { id: 'salt', name: 'Salt and tea', base: 12, m: { S: 1.2, C: 1.3, A: .5, D: 1.4, F: 1.5 } },
+    { id: 'oil', name: 'Whale-oil', base: 30, m: { S: 1.4, C: 1.6, A: 1.2, D: 1.3, F: .55 } },
+    { id: 'dust', name: 'Stardust', base: 90, m: { S: 2.2, C: 1.5, A: .5, D: 1.3, F: 1.4 }, dark: true }
+  ];
+  const WHALES = {
+    deep: { name: 'Deepwalker', kind: 'Blue whale', cap: 10, spd: 1, blurb: 'Big and slow. Carries the most.' },
+    song: { name: 'Songline', kind: 'Humpbacks', cap: 6, spd: 1, blurb: 'Pilgrims pay half again as much. Frostmere’s singers keep it calm.' },
+    pale: { name: 'Pale Runner', kind: 'Beluga', cap: 4, spd: .5, blurb: 'Half the travel time. Room for little.' }
+  };
+  const RANKS = [[0, 'Deckhand', 'You never made it off the quay.'], [600, 'Whale-rider', 'You are known on the Harbour Greys, and little further.'], [1500, 'Line-captain', 'Handlers nod to you. Guilds send you their tea.'], [3000, 'Master of the Lines', 'Every handler from Frostmere to Cinderbrine knows your whale’s name.']];
+
+  let S;
+  const slots = () => Object.values(S.cargo).reduce((a, b) => a + b, 0) + S.contracts.reduce((a, c) => a + c.slots, 0);
+  const cap = () => WHALES[S.whale].cap + S.racks * 3;
+  function reprice() {
+    S.price = {}; for (const t in TOWNS) { S.price[t] = {}; GOODS.forEach(g => S.price[t][g.id] = Math.max(3, g.base * g.m[t] * rnd(.85, 1.15))); }
+  }
+  function newContract(from) {
+    const pilgrims = Math.random() < .6, tos = Object.keys(TOWNS).filter(t => t !== from);
+    const to = pilgrims ? (from === 'D' ? pick(tos) : 'D') : pick(tos), d = dist(from, to);
+    const slotsN = pilgrims ? Math.floor(rnd(2, 5)) : 1, due = S.day + Math.ceil(d * (S.whale === 'pale' ? .5 : 1)) + Math.floor(rnd(2, 5));
+    const rate = pilgrims ? 38 * (S.whale === 'song' ? 1.5 : 1) : 85;
+    return { id: Math.random().toString(36).slice(2, 7), kind: pilgrims ? 'pilgrims' : 'mail', from, to, slots: slotsN, pay: Math.round(rate * slotsN * (d / 4 + .5)), due };
+  }
+  function start(w) {
+    S = { whale: w, day: 1, at: 'S', tallies: 160, cargo: {}, contracts: [], offers: {}, racks: 0, heat: 0, omen: 0, ran: 0, caught: 0, beasts: 0, log: [], done: false };
+    GOODS.forEach(g => S.cargo[g.id] = 0); reprice();
+    for (const t in TOWNS) S.offers[t] = Math.random() < .7 ? newContract(t) : null;
+    say('You take the reins of a ' + WHALES[w].name + ' at the Whale Basin. Thirty days until the lamps go dark.'); render(); tone(0);
+  }
+  function say(t) { S.log.unshift({ d: S.day, t }); S.log = S.log.slice(0, 40); }
+
+  function intro() {
+    $('#app').innerHTML = `<h1>Whale Lines</h1><p class="sub">Thirty days until the Night of Quiet Lights. Run a line between the five regions, and decide how honest you want to be.</p>
+      <div class="panel"><h2>Pick your whale</h2><div class="opt">${Object.entries(WHALES).map(([k, w]) => `<button class="btn" data-w="${k}"><b>${w.name}</b><small>${w.kind}. ${w.cap} slots. ${w.blurb}</small></button>`).join('')}</div>
+      <p class="note">You start at Saltglass with 160 tallies. Buy cheap, sell dear, carry pilgrims and mail, and watch the Quiet Hand. Stardust pays best, and is banned in the Admiralty’s ports.</p>
+      ${load('whales_best', 0) ? `<p class="note">Your best finish: <b>${load('whales_best', 0)}</b> tallies.</p>` : ''}</div>`;
+    $$('[data-w]').forEach(b => b.onclick = () => start(b.dataset.w));
+  }
+
+  function render() {
+    if (S.done) return;
+    const T = TOWNS[S.at], here = Object.keys(TOWNS);
+    const lanes = []; here.forEach((a, i) => here.slice(i + 1).forEach(b => lanes.push([a, b])));
+    const dd = (a, b) => Math.ceil(dist(a, b) * WHALES[S.whale].spd);
+    const svg = `<svg id="map" viewBox="0 0 620 340" role="img" aria-label="Chart of the five regions">
+      <rect width="620" height="340" rx="12" fill="#070d24"/>
+      ${lanes.map(([a, b]) => { const A = TOWNS[a], B = TOWNS[b], on = a === S.at || b === S.at; return `<line class="lane ${on ? 'on' : ''}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>${on ? `<text class="lab" x="${(A.x + B.x) / 2}" y="${(A.y + B.y) / 2 + 4}">${dd(a, b)}d</text>` : ''}`; }).join('')}
+      ${here.map(k => { const t = TOWNS[k]; return `<g class="node ${k === S.at ? 'here' : ''}" data-t="${k}" tabindex="0" role="button" aria-label="${t.name}${k === S.at ? ' (you are here)' : ', ' + dd(S.at, k) + ' days'}"><circle cx="${t.x}" cy="${t.y}" r="30"/><text x="${t.x}" y="${t.y + 4}">${t.name.split(' ')[0]}</text></g>`; }).join('')}
+      <path class="whale" d="M${T.x - 14} ${T.y - 44}q10 -12 22 -2q8 -6 14 2q-8 2 -12 8q-12 6 -24 -8z"/></svg>`;
+    const mk = S.price[S.at];
+    const rows = GOODS.map(g => { const p = Math.round(mk[g.id]), sp = Math.round(mk[g.id] * .92), q = S.cargo[g.id];
+      return `<tr><td class="n">${g.name}${g.dark ? ' <span class="cb">BANNED</span>' : ''}</td><td class="r">${p}</td><td class="r">${sp}</td><td class="r">${q}</td>
+      <td class="r"><button class="btn sm" data-b="${g.id}" ${S.tallies < p || slots() >= cap() ? 'disabled' : ''}>Buy</button> <button class="btn sm" data-s="${g.id}" ${q < 1 ? 'disabled' : ''}>Sell</button></td></tr>`; }).join('');
+    const offer = S.offers[S.at];
+    const act = S.contracts.map(c => `<div class="contract">${c.kind === 'pilgrims' ? c.slots + ' pilgrims' : 'Sealed mail'} to ${TOWNS[c.to].name}, by day ${c.due}. Pays ${c.pay}.</div>`).join('');
+    $('#app').innerHTML = `<h1>Whale Lines</h1>
+      <div class="bar"><span class="stat">Day<b>${S.day} / ${END_DAY}</b></span><span class="stat">Tallies<b>${Math.round(S.tallies)}</b></span><span class="stat">Hold<b>${slots()} / ${cap()}</b></span><span class="stat">Quiet Hand<span class="meter bad"><i style="width:${S.heat * 10}%"></i></span></span><span class="stat">${WHALES[S.whale].name}</span></div>
+      <div class="grid"><div><div class="panel"><h2>The sea chart</h2>${svg}<p class="note">${esc(T.note)} Click a region to sail there.</p></div>
+      <div class="panel"><h2>Log</h2><div class="log">${S.log.map(l => `<div><b>DAY ${l.d}</b>${esc(l.t)}</div>`).join('')}</div></div></div>
+      <div><div class="panel"><h2>${T.name} market</h2><table><tr><th>Goods</th><th class="r">Buy</th><th class="r">Sell</th><th class="r">Hold</th><th></th></tr>${rows}</table>
+        <div class="row" style="margin-top:10px"><button class="btn sm" id="rack" ${S.tallies < 120 || S.racks >= 2 ? 'disabled' : ''}>Cargo racks +3 slots (120)</button></div></div>
+      <div class="panel"><h2>Contracts</h2>${offer ? `<div class="contract">${offer.kind === 'pilgrims' ? offer.slots + ' pilgrims bound for ' + TOWNS[offer.to].name : 'Sealed mail for ' + TOWNS[offer.to].name}, by day ${offer.due}. Pays ${offer.pay}.
+        <div class="row" style="margin-top:6px"><button class="btn sm" id="take" ${slots() + offer.slots > cap() || S.contracts.length >= 2 ? 'disabled' : ''}>Take it (${offer.slots} slot${offer.slots > 1 ? 's' : ''})</button></div></div>` : '<p class="note">Nothing posted at the quay today.</p>'}
+        ${act ? '<p class="who" style="margin-top:10px">Carrying</p>' + act : ''}</div></div></div>`;
+    $$('[data-b]').forEach(b => b.onclick = () => trade(b.dataset.b, 1));
+    $$('[data-s]').forEach(b => b.onclick = () => trade(b.dataset.s, -1));
+    $$('.node').forEach(n => { const go = () => sail(n.dataset.t); n.onclick = go; n.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
+    const r = $('#rack'); if (r) r.onclick = () => { S.tallies -= 120; S.racks++; say('You bolt cargo racks to the harness. +3 slots.'); tone(1); render(); };
+    const tk = $('#take'); if (tk) tk.onclick = () => { S.contracts.push(offer); S.offers[S.at] = null; say('You take the contract for ' + TOWNS[offer.to].name + '.'); tone(2); render(); };
+  }
+
+  function trade(id, dir) {
+    const p = S.price[S.at], g = GOODS.find(x => x.id === id);
+    if (dir > 0) { const c = Math.round(p[id]); if (S.tallies < c || slots() >= cap()) return; S.tallies -= c; S.cargo[id]++; p[id] *= 1.04; tone(1, .3); }
+    else { if (S.cargo[id] < 1) return; let m = p[id] * .92; if (S.omen) m *= 1.2; S.tallies += m; S.cargo[id]--; p[id] *= .96; if (g.dark) { S.heat = Math.min(10, S.heat + 1); S.ran++; } tone(3, .3); }
+    render();
+  }
+
+  function sail(to) {
+    if (to === S.at) return;
+    const d = Math.ceil(dist(S.at, to) * WHALES[S.whale].spd), from = S.at; S.at = to; S.day += d; S.omen = 0;
+    say(`You sail from ${TOWNS[from].name} to ${TOWNS[to].name} in ${d} day${d > 1 ? 's' : ''}.`);
+    S.heat = Math.max(0, S.heat - Math.floor(d / 3)); tone(4, .4);
+    /* contracts */
+    S.contracts = S.contracts.filter(c => {
+      if (c.to === to) { const late = S.day > c.due, pay = late ? Math.round(c.pay / 2) : c.pay; S.tallies += pay; say(`${c.kind === 'pilgrims' ? 'Pilgrims' : 'Mail'} delivered${late ? ' late (half pay)' : ''}: +${pay}.`); tone(5); return false; }
+      if (S.day > c.due + 2) { say('A contract lapsed. The guild notes it.'); S.tallies -= 20; return false; } return true;
+    });
+    /* patrols */
+    if (S.cargo.dust > 0 && TOWNS[to].patrol) {
+      if (Math.random() < TOWNS[to].patrol + S.heat * .05) { const lost = S.cargo.dust; S.cargo.dust = 0; const fine = Math.min(S.tallies, 80); S.tallies -= fine; S.heat = Math.min(10, S.heat + 2); S.caught++; say(`A Vesper-class patrol boards at ${TOWNS[to].name}. The dust is seized (${lost}) and you are fined ${fine}.`); bell(); }
+    }
+    /* the Quiet Hand */
+    if (S.heat >= 8) { const fee = Math.min(S.tallies, 100); S.tallies -= fee; S.heat = Math.max(0, S.heat - 4); say(`A polite note arrives: you are invited to tea. Nobody says what the tea costs. It costs ${fee}.`); bell(); }
+    /* events */
+    if (Math.random() < .4) {
+      const r = Math.random();
+      if (r < .18) { S.day++; say('The Call. The whale bucks and will not swim straight. You lose a day.'); }
+      else if (r < .36) { S.tallies += 25; say('Starfall at dusk. Fishers share the catch of glowing motes: +25.'); tone(5); }
+      else if (r < .46) { S.omen = 1; S.beasts++; say('A star-beast surfaces beside you. A good omen: everything you sell here fetches a fifth more.'); tone(2); setTimeout(() => tone(4), 200); }
+      else if (r < .66) { const f = Math.min(S.tallies, 20); S.tallies -= f; say(`The whale-line guild collects dues: -${f}.`); }
+      else if (r < .8) { S.day++; say('A cold front off the ice slows the crossing by a day.'); }
+      else say('A quiet crossing. Whale-song carries over the water.');
+    }
+    reprice(); if (Math.random() < .5) S.offers[to] = newContract(to);
+    if (S.day > END_DAY) return finish();
+    render();
+  }
+
+  function finish() {
+    S.done = true; const dust = S.cargo.dust;
+    let t = S.tallies + GOODS.reduce((a, g) => a + S.cargo[g.id] * g.base * .5, 0); t = Math.round(t);
+    const rk = RANKS.filter(r => t >= r[0]).pop(), best = load('whales_best', 0); if (t > best) save('whales_best', t);
+    const lines = [];
+    if (S.ran >= 3) lines.push('You sold dust enough times that the Quiet Hand has your name written on something. Probably the back of a saucer.');
+    else if (S.ran === 0) lines.push('You never sold a grain of dust. Not one handler along the lines would say a word against you.');
+    if (S.caught) lines.push('You were boarded by patrols ' + S.caught + ' time' + (S.caught > 1 ? 's' : '') + '.');
+    if (S.beasts) lines.push('You met ' + S.beasts + ' star-beast' + (S.beasts > 1 ? 's' : '') + '. People will want to hear about it.');
+    lines.push('At midnight the lamps went dark across every port you passed, and the whales stopped singing.');
+    $('#app').innerHTML = `<div class="panel fade"><p class="who" style="text-align:center">Night of Quiet Lights</p><h1>${esc(rk[1])}</h1><p class="say" style="text-align:center">${esc(rk[2])}</p>
+      <div class="ctr"><div><b>Final worth</b>${t} tallies</div><div><b>Whale</b>${WHALES[S.whale].name}</div><div><b>Best finish</b>${Math.max(best, t)}</div></div>
+      ${lines.map(l => `<p class="note" style="text-align:center">${esc(l)}</p>`).join('')}
+      <div class="row" style="justify-content:center;margin-top:12px"><button class="btn on" id="again">Run another line</button><a class="btn" href="../index.html#play" style="text-decoration:none">Back to Saltglass</a></div></div>`;
+    $('#again').onclick = intro; bell();
+  }
+  intro();
+})();
+</script>
+</body>
+</html>

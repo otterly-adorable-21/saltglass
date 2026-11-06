@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Pouring: a Saltglass tea game</title>
+<meta name="description" content="Host seven guests at the Admiralty Tea House. Pour carefully. Every cup is a contract.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="game.css?v=1">
+<style>
+.glyph{width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;font-family:var(--display);font-size:1.6rem;color:var(--gold-lt);background:radial-gradient(circle at 50% 35%,#24347a,#0b1430);box-shadow:0 0 18px rgba(212,175,106,.25);flex:none}
+.guest{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+.guest .nm{font-family:var(--display);font-size:1.15rem;letter-spacing:.08em;color:var(--gold-lt)}
+.guest .tt{color:var(--violet);font-style:italic;font-size:1rem}
+.choices{display:grid;gap:8px;margin-top:12px}
+.choices.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.choices .btn{text-align:left;border-radius:12px;text-transform:none;letter-spacing:.02em;font-family:var(--body);font-size:1.1rem;padding:11px 14px}
+.choices .btn small{display:block;color:var(--mist);font-size:.92rem}
+.lines>div{margin:0 0 10px;padding-left:12px;border-left:2px solid rgba(212,175,106,.4)}
+.lines .q{color:var(--mist);font-style:normal;font-size:1rem}
+.cup{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;background:var(--violet);box-shadow:0 0 8px rgba(185,167,232,.7);vertical-align:-1px}
+.cup.used{background:transparent;border:1px solid var(--mist);box-shadow:none}
+.end h1{margin-top:4px}.end .tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.end .tally div{border:1px solid rgba(212,175,106,.35);border-radius:10px;padding:8px 12px;background:rgba(11,20,48,.55)}
+.end .tally b{display:block;font-family:var(--display);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);font-weight:400}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="top"><a href="../index.html#play">&larr; Back to Saltglass</a><button class="btn sm" id="snd" type="button">Sound: on</button></div>
+<div class="wrap">
+  <h1>The Pouring</h1>
+  <p class="sub">The Admiralty Tea House, the night before the lamps go dark. Seven guests. Every cup is a contract.</p>
+  <div class="bar" id="bar"></div>
+  <div id="stage"></div>
+</div>
+<script src="common.js?v=1"></script>
+<script>
+(function () {
+  const { $, esc, tone, bell, clamp, save, load } = G; G.mute($('#snd'));
+
+  /* Verdicts: letgo = let them leave, tell = tell the First Mate, hand = send for the Quiet Hand.
+     Each outcome: o = Order change, u = Unrest change. */
+  const GUESTS = [
+    { id: 'orrin', name: 'Lady Orrin Vessel', title: 'Old-money council member, Upper Terraces', mono: 'O',
+      open: 'She takes the cup without looking at it, as people do who have never poured their own.',
+      q: [
+        ['What brings you to Velvet Haven tonight?', 'The council wishes the quotas raised. We are always told next season.', 'Raised quotas, and a quiet word about why the First Mate’s brass ledger has our family names in it at all.'],
+        ['How is the Upper Terraces?', 'Gilded, and a little sleepless.', 'Every lamp on my street flickers at the same hour each night. We have all agreed not to notice.'],
+        ['Will you stay for a second cup?', 'A second cup is a second contract, dear. No.', 'Yes. I would like, just once, to sign something I understand.']],
+      out: { letgo: { o: 1, u: 0, t: 'She leaves a coin for the Pourer and a sigh for the quotas. The council will keep grumbling.' },
+             tell: { o: 1, u: 1, t: 'Volaro hears of it by morning. The council is irritated to be watched, and says so, politely, to everyone.' },
+             hand: { o: -1, u: 2, t: 'An old-money lady, quietly collected. By dawn, three families have stopped drinking at the Haven.' } } },
+
+    { id: 'corvane', name: 'Corvane Salt', title: 'Broker, Ashgrove Atoll', mono: 'C',
+      open: 'He watches you pour, as a man does who has watched a great many things poured.',
+      q: [
+        ['Where have you sailed from?', 'Ashgrove, with salt. Honest salt.', 'Ashgrove. Eleven crates of salt and four of something that glitters when a lid slips.'],
+        ['What are you carrying?', 'Tea, salt, fish. Check the barrels if you doubt me.', 'Dust, love. Clear, near pure. A Pale Runner brought it in under the fish.'],
+        ['Is the tea to your liking?', 'Strong. Too strong for a man with nothing to hide.', 'I never drink what I have not watched poured. Yours was the first I could not refuse.']],
+      out: { letgo: { o: -2, u: 0, t: 'He bows. By midnight there is a new twist of oilskin in a Tea House back room, and nobody has looked for it.' },
+             tell: { o: 1, u: 0, t: 'The First Mate’s clerks are very interested in four crates. Corvane is gone before they reach the quay.' },
+             hand: { o: 2, u: 0, t: 'The Quiet Hand escorts him out after the pot is poured. The crates are found. Order is quietly pleased.' } } },
+
+    { id: 'ilu', name: 'Ilu Reedmark', title: 'Envoy of the Verdant Drift', mono: 'I',
+      open: 'She sits very straight. Envoys from the Drift always do. They know who is watching.',
+      q: [
+        ['What does the Drift want of Saltglass?', 'Fair trade and open water.', 'The Admiral to step down. Quietly, with grace. We would let him.'],
+        ['What is the Drift like?', 'Green. Wet. Honest.', 'Older than your city’s guilt. The priests still carve the old name, and they know what you burn.'],
+        ['Does the Admiral frighten you?', 'He pours beautifully.', 'A man who cannot say his own name should not hold so many lives.']],
+      out: { letgo: { o: 0, u: -1, t: 'She leaves courteously. The Drift remembers who treated its envoy as a guest.' },
+             tell: { o: 1, u: 0, t: 'Volaro adds a line to the ledger. Nothing happens, which is its own kind of answer.' },
+             hand: { o: 1, u: 3, t: 'An envoy of the one independent region, collected at the Admiralty table. By morning the Drift has closed its harbours.' } } },
+
+    { id: 'maren', name: 'Maren Ashgood', title: 'Glass-steel smith, Cinderbrine', mono: 'M',
+      open: 'Her hands are scarred by hot glass. She holds the cup as if it might break first.',
+      q: [
+        ['What do you make?', 'Glass-steel. Heavy, honest work.', 'Glass-steel by day. By night I set a chair at my table and nobody sits in it.'],
+        ['Is it true the Thirteenth is dead?', 'So they say. Hush.', 'Dead things do not call. Listen at the bottom of the lift shaft some midnight.'],
+        ['Is there anything you want from me?', 'Another cup, and a quiet table.', 'A chair. Just a chair, set out at the back table. Nothing more. Please.']],
+      out: { letgo: { o: -1, u: 0, t: 'You set an empty chair at the back table. She does not look at it. She nods once, and is gone.', bearer: 1 },
+             tell: { o: 1, u: 0, t: 'A smith with a chair. The First Mate writes it down and, for once, does nothing more.' },
+             hand: { o: 2, u: 2, t: 'A heretic, collected. The forges of Cinderbrine go quiet for a night in protest.', } } },
+
+    { id: 'teodric', name: 'Teodric Valemoor', title: 'Whale-singer, Frostmere Reach', mono: 'T',
+      open: 'He is pale, and stares at the steam as though it were speaking.',
+      q: [
+        ['You seem unwell.', 'The sea is loud tonight. That is all.', 'My eyes went white at the quay. Someone fetched water. They do not know what I hear.'],
+        ['What do you hear?', 'Whales. They always sing.', 'A voice under all the voices. It says I am missing a piece.'],
+        ['Where were you born?', 'On the ice. Under Aquarius.', 'Under a star that was burned before it landed, my mother was told. She never said by whom.']],
+      out: { letgo: { o: 0, u: -1, t: 'You send a second cup, plain, to his table. He leaves steadier than he arrived.' },
+             tell: { o: 1, u: 1, t: 'The First Mate is very gentle about it, which is worse. Someone will be watching Teodric now.' },
+             hand: { o: 1, u: 3, t: 'A star-touched singer, taken in the quiet. Frostmere hears by the next tide, and does not forgive it.' } } },
+
+    { id: 'pell', name: 'Pell', title: 'No trade given', mono: 'P',
+      open: 'A thin figure with bright eyes who laughs a half-beat too late.',
+      q: [
+        ['How are you tonight?', 'Fine. Just fine. The lamps are loud.', 'I saw a star’s whole life last night. It was somebody’s childhood.'],
+        ['What are you running from?', 'Nothing. From the quiet.', 'From the quiet. When it stops I hear nothing at all, and that is worse.'],
+        ['Will you leave quietly?', 'If you like.', 'Please do not tell the Quiet Hand. I will go. I will go.']],
+      out: { letgo: { o: 0, u: -1, t: 'You pour plain water, and tea, and say nothing. Pell sleeps in the corner until dawn.' },
+             tell: { o: 1, u: 0, t: 'A name for the ledger. A dust-user is pitiable more than dangerous, and the First Mate knows it.' },
+             hand: { o: 1, u: 2, t: 'Dust-users are hunted, and Pell is collected. Under the lamps, the Undertow notices who was taken.' } } },
+
+    { id: 'sabel', name: 'Sabel Thorne', title: 'Pressure-wright, the Undertow', mono: 'S',
+      open: 'She still has sealant on her hands. She apologises for it twice.',
+      q: [
+        ['You look tired.', 'Twelve hours in the domes.', 'Three leaks sealed this week. The Dome ration has been cut again.'],
+        ['What do you need from the Admiralty?', 'A word with the First Mate.', 'Starfall for the air. One more cut and the Bellgardens go dim. Then the Undertow.'],
+        ['Who else knows?', 'Everyone who breathes down there.', 'Nobody up here. That is the whole trouble.']],
+      out: { letgo: { o: 0, u: 1, t: 'She thanks you for the tea and returns to the lifts. Nothing changes down there, and the air thins a little more.' },
+             tell: { o: 1, u: -2, t: 'Volaro reads the note twice. The Dome allocation is eased by a hair before the night is out. The Undertow keeps breathing.', air: 1 },
+             hand: { o: 0, u: 3, t: 'The pressure-wright is taken from her post. Two nights later the air system stumbles, and the lifts fill with frightened people.' } } }
+  ];
+
+  const ENDS = [
+    { k: 'chair', t: 'The Empty Chair', test: s => s.bearer >= 1 && s.innocent === 0 && s.unrest <= 5,
+      b: 'At dawn there is a small chair at the back table that was not there before, and a cup poured for no one. Someone has written the old name on the underside of the saucer. You were seen to be kind. The Bearers do not forget that, and neither, you suspect, does the star.' },
+    { k: 'spilt', t: 'Spilt', test: s => s.unrest >= 8,
+      b: 'The city wakes frightened. The Undertow lamps flicker, the Drift is silent, and in the Upper Terraces people stop pretending the tea tastes the same. By noon the First Mate is asking who poured, and you have no good answer.' },
+    { k: 'polite', t: 'A Very Polite City', test: s => s.order >= 8 && s.innocent >= 2,
+      b: 'The Admiralty praises your discretion. Every table is quiet. Every guest, you notice, is a little careful of their cup. You have been very useful, and nobody at the Haven will quite meet your eye.' },
+    { k: 'steady', t: 'Steady Lamps', test: s => s.unrest <= 3 && s.order >= 4,
+      b: 'The Haven closes without incident. The lamps will go dark at sunset and come back, and the city will say it was a quiet year. You poured well, and that is all anyone will ever say of you.' },
+    { k: 'cold', t: 'The Pot Goes Cold', test: () => true,
+      b: 'A mixed night. Some were helped, some were not, and the ledger will say more about it than you will. The pot goes cold on the back shelf, and tomorrow you pour again.' }
+  ];
+
+  let S, step, gi, tea, asked, leaves;
+  function reset() { S = { order: 4, unrest: 2, bearer: 0, innocent: 0, air: 0, hands: 0, log: [] }; gi = 0; leaves = 3; step = 'intro'; render(); }
+
+  function bar() {
+    const m = (v, bad) => `<span class="meter ${bad ? 'bad' : ''}"><i style="width:${v * 10}%"></i></span>`;
+    $('#bar').innerHTML = `<span class="stat">Guest<b>${Math.min(gi + 1, GUESTS.length)} / ${GUESTS.length}</b></span>
+      <span class="stat">Order ${m(S.order)}</span><span class="stat">Unrest ${m(S.unrest, 1)}</span>
+      <span class="stat">Hollow-Leaf ${Array.from({ length: 3 }, (_, i) => `<span class="cup ${i < leaves ? '' : 'used'}"></span>`).join('')}</span>`;
+  }
+
+  function render() {
+    bar(); const st = $('#stage'); const g = GUESTS[gi];
+    if (step === 'intro') {
+      st.innerHTML = `<div class="panel fade"><h2>Your post</h2>
+        <p>You are a Pourer, the lowest rank that sits at every table, and so hears everything. The Admiral’s teas begin every treaty, deal and arrest, and tonight is the Night of Quiet Lights.</p>
+        <p>For each guest you will <b>pour</b> (plain tea, or a pot of Hollow-Leaf, the Admiral’s private blend, which loosens tongues but is strictly rationed: you have three), <b>ask two questions</b>, and then <b>decide</b>: let them go, tell the First Mate, or send for the Quiet Hand.</p>
+        <p class="note">Order is how the Admiralty sees the night. Unrest is how the city feels it. Neither should run too high or too low.</p>
+        <div class="row"><button class="btn on" id="go">Begin the evening</button></div></div>`;
+      $('#go').onclick = () => { tone(0); step = 'pour'; render(); }; return;
+    }
+    if (step === 'end') return ending();
+    const head = `<div class="panel fade"><div class="guest"><div class="glyph" aria-hidden="true">${g.mono}</div><div><div class="nm">${esc(g.name)}</div><div class="tt">${esc(g.title)}</div></div></div>`;
+    if (step === 'pour') {
+      st.innerHTML = head + `<p class="say">${esc(g.open)}</p>
+        <div class="choices two"><button class="btn" data-t="plain">Pour plain tea<small>Safe. They will tell you very little.</small></button>
+        <button class="btn" data-t="leaf" ${leaves < 1 ? 'disabled' : ''}>Pour Hollow-Leaf<small>${leaves} pot${leaves === 1 ? '' : 's'} left. They will say more than they meant to.</small></button></div></div>`;
+      st.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tea = b.dataset.t; if (tea === 'leaf') leaves--; asked = []; tone(tea === 'leaf' ? 4 : 1); step = 'ask'; render(); }); return;
+    }
+    if (step === 'ask') {
+      const lines = asked.map(i => `<div><div class="q">You: ${esc(g.q[i][0])}</div><div class="say">${esc(g.q[i][tea === 'leaf' ? 2 : 1])}</div></div>`).join('');
+      const left = 2 - asked.length;
+      st.innerHTML = head + `<p class="note">${tea === 'leaf' ? 'The Hollow-Leaf is steeped with trace starfall. Their eyes soften.' : 'A plain pot. Courteous, and closed.'}</p>
+        <div class="lines">${lines}</div>
+        ${left > 0 ? `<p class="who">Ask a question (${left} left)</p><div class="choices">${g.q.map((q, i) => asked.includes(i) ? '' : `<button class="btn" data-q="${i}">${esc(q[0])}</button>`).join('')}</div>` :
+          `<p class="who">Your decision</p><div class="choices two"><button class="btn" data-d="letgo">Let them leave<small>Wish them well.</small></button><button class="btn" data-d="tell">Tell the First Mate<small>A note, sealed, to Volaro’s office.</small></button><button class="btn warn" data-d="hand">Send for the Quiet Hand<small>Quietly, after the pot is poured.</small></button></div>`}</div>`;
+      st.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { asked.push(+b.dataset.q); tone(2 + asked.length); render(); });
+      st.querySelectorAll('[data-d]').forEach(b => b.onclick = () => decide(b.dataset.d)); return;
+    }
+    if (step === 'out') {
+      const o = S.last;
+      st.innerHTML = head + `<p class="say">${esc(o.t)}</p>
+        <p class="note"><span class="${o.o >= 0 ? 'good' : 'bad'}">Order ${o.o > 0 ? '+' : ''}${o.o}</span> &nbsp; <span class="${o.u <= 0 ? 'good' : 'bad'}">Unrest ${o.u > 0 ? '+' : ''}${o.u}</span></p>
+        <div class="row"><button class="btn on" id="nx">${gi + 1 < GUESTS.length ? 'Next guest' : 'The lamps go dark'}</button></div></div>`;
+      $('#nx').onclick = () => { gi++; step = gi < GUESTS.length ? 'pour' : 'end'; render(); }; return;
+    }
+  }
+
+  function decide(d) {
+    const g = GUESTS[gi], o = g.out[d];
+    S.order = clamp(S.order + o.o, 0, 10); S.unrest = clamp(S.unrest + o.u, 0, 10);
+    if (o.bearer) S.bearer++; if (o.air) S.air = 1;
+    if (d === 'hand') { S.hands++; if (['orrin', 'teodric', 'pell', 'sabel'].includes(g.id)) S.innocent++; }
+    S.last = o; (d === 'hand' ? bell : () => tone(0))(); step = 'out'; render();
+  }
+
+  function ending() {
+    const e = ENDS.find(x => x.test(S)); save('pouring_end', e.k);
+    $('#bar').innerHTML = '';
+    $('#stage').innerHTML = `<div class="panel end fade"><p class="who" style="text-align:center">Midnight. The Twelve Names are read. The city holds its silence.</p><h1>${esc(e.t)}</h1>
+      <p class="say" style="text-align:center">${esc(e.b)}</p>
+      <div class="tally"><div><b>Order</b>${S.order} / 10</div><div><b>Unrest</b>${S.unrest} / 10</div><div><b>Sent for the Quiet Hand</b>${S.hands}</div><div><b>Bearers helped</b>${S.bearer}</div></div>
+      ${S.air ? '<p class="note good" style="text-align:center">The Undertow’s air held, because you passed on a warning.</p>' : ''}
+      <p class="note" style="text-align:center">Just after midnight, the Admiral pours a cup for no one, and leaves it out for the empty count. Then he goes down alone.</p>
+      <div class="row" style="justify-content:center"><button class="btn on" id="again">Pour again</button><a class="btn" href="../index.html#play" style="text-decoration:none">Back to Saltglass</a></div>
+      <p class="note" style="text-align:center;margin-top:12px">There are five endings. Tonight you found: <i>${esc(e.t)}</i>.</p></div>`;
+    $('#again').onclick = reset; tone(5);
+  }
+  reset();
+})();
+</script>
+</body>
+</html>
