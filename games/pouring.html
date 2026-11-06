@@ -9,6 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="game.css?v=1">
 <style>
+.port{width:96px;height:96px;border-radius:50%;object-fit:cover;object-position:50% 25%;border:2px solid var(--gold);box-shadow:0 0 20px rgba(212,175,106,.3);flex:none;background:#0b1430}
+@media (max-width:600px){.port{width:72px;height:72px}}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(rgba(6,11,31,.55),rgba(6,11,31,.82)),url(img/teahouse.webp) center/cover no-repeat}
+.hero-img{display:block;width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:10px;border:1px solid rgba(212,175,106,.5);margin-bottom:12px}
 .glyph{width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);display:grid;place-items:center;font-family:var(--display);font-size:1.6rem;color:var(--gold-lt);background:radial-gradient(circle at 50% 35%,#24347a,#0b1430);box-shadow:0 0 18px rgba(212,175,106,.25);flex:none}
 .guest{display:flex;gap:16px;align-items:center;margin-bottom:12px}
 .guest .nm{font-family:var(--display);font-size:1.15rem;letter-spacing:.08em;color:var(--gold-lt)}
@@ -140,7 +144,7 @@
   function render() {
     bar(); const st = $('#stage'); const g = GUESTS[gi];
     if (step === 'intro') {
-      st.innerHTML = `<div class="panel fade"><h2>Your post</h2>
+      st.innerHTML = `<div class="panel fade"><img class="hero-img" src="img/teahouse.webp" alt="A cup of starlit tea steaming on a brass table in the Admiralty Tea House"><h2>Your post</h2>
         <p>You are a Pourer, the lowest rank that sits at every table, and so hears everything. The Admiral’s teas begin every treaty, deal and arrest, and tonight is the Night of Quiet Lights.</p>
         <p>For each guest you will <b>pour</b> (plain tea, or a pot of Hollow-Leaf, the Admiral’s private blend, which loosens tongues but is strictly rationed: you have three), <b>ask two questions</b>, and then <b>decide</b>: let them go, tell the First Mate, or send for the Quiet Hand.</p>
         <p class="note">Order is how the Admiralty sees the night. Unrest is how the city feels it. Neither should run too high or too low.</p>
@@ -148,7 +152,7 @@
       $('#go').onclick = () => { tone(0); step = 'pour'; render(); }; return;
     }
     if (step === 'end') return ending();
-    const head = `<div class="panel fade"><div class="guest"><div class="glyph" aria-hidden="true">${g.mono}</div><div><div class="nm">${esc(g.name)}</div><div class="tt">${esc(g.title)}</div></div></div>`;
+    const head = `<div class="panel fade"><div class="guest"><img class="port" src="img/${g.id}.webp" alt="${esc(g.name)}" onerror="this.outerHTML='<div class=glyph>${g.mono}</div>'"><div><div class="nm">${esc(g.name)}</div><div class="tt">${esc(g.title)}</div></div></div>`;
     if (step === 'pour') {
       st.innerHTML = head + `<p class="say">${esc(g.open)}</p>
         <div class="choices two"><button class="btn" data-t="plain">Pour plain tea<small>Safe. They will tell you very little.</small></button>
