@@ -132,11 +132,11 @@
   })();
 
   /* ---------- router ---------- */
-  const VIEWS = ['home', 'myth', 'sky', 'beasts', 'voyage', 'rite', 'bots', 'codex'];
+  const VIEWS = ['home', 'myth', 'sky', 'beasts', 'voyage', 'rite', 'play', 'bots', 'codex'];
   SG.views = {}; let cur = null; const inited = {};
   SG.go = name => { if (location.hash.slice(1) === name) route(); else location.hash = name; };
   function show(name, keepScroll) {
-    if (!VIEWS.includes(name)) name = 'home';
+    if (!VIEWS.includes(name) && !document.getElementById('v-' + name)) name = 'home';
     if (cur && SG.views[cur] && SG.views[cur].leave && cur !== name) SG.views[cur].leave();
     cur = name;
     $$('.view').forEach(v => v.hidden = v.id !== 'v-' + name);
