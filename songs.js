@@ -9,8 +9,7 @@
    To add a song: upload the mp3 to the music folder, then add a line
    below. Spaces and symbols in file names are already handled.
 
-   The built-in generated ambience is always the last entry in the
-   player, so the player works even if a file is missing.
+   If this list is empty, the music buttons are hidden.
    =========================================================== */
 window.TRACKS = [
   // Themes
